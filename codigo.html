@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake and apples</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            overflow: hidden;
+        }
+        .game-container {
+            border: 2cm solid #4CAF50; /* Borda de 2 cm de cor verde */
+            padding: 20px; /* Espaço entre a borda e o canvas */
+        }
+        canvas {
+            display: block;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+            z-index: 2;
+        }
+        #gameOverMessage {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            z-index: 2;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="score">Pontos: 0</div>
+        <div id="gameOverMessage"></div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreDisplay = document.getElementById("score");
+        const gameOverMessage = document.getElementById("gameOverMessage");
+        let box = 20;
+        let snake, direction, food, score, gameInterval, isPaused, isGameOver;
+
+        const messages = [
+            "Eu só sei rastejar... será que tem algo mais pra fazer na vida?",
+            "Por que todo mundo me acha tão perigosa? Eu só quero um abraço!",
+            "Eu sou uma cobra... mas e daí? Qual o sentido disso?",
+            "A cada muda de pele, eu me pergunto: será que sou uma cobra melhor agora?",
+            "Eu mordo, mas será que estou mordendo a vida ou só os outros?",
+            "Eu vivo rastejando... mas por que não posso dar um rolê de bicicleta?",
+            "Será que cobras também têm crise de identidade?",
+            "Eu sou venenosa, mas... será que eu posso ser doce, de vez em quando?",
+            "Eu devia caçar ratos, mas por que não caçar respostas para as minhas perguntas?",
+            "O que acontece quando uma cobra tem um dia de folga?",
+            "O que sou eu, além de uma série de escalas e cascas?",
+            "Eu não posso voar, mas posso fazer umas piadas sobre isso!",
+            "Será que as outras cobras têm pesadelos comigo sendo vegetariana?",
+            "Eu rastejo tanto que já estou começando a achar que a vida é uma eterna escada rolante.",
+            "Posso não ter braços, mas sou uma campeã no ‘mestre do rastejo’!"
+        ];
+
+        function init() {
+            canvas.width = window.innerWidth - 40;  // Ajustando para a borda
+            canvas.height = window.innerHeight - 40;  // Ajustando para a borda
+            snake = [{ x: Math.floor(canvas.width / 2 / box) * box, y: Math.floor(canvas.height / 2 / box) * box }];
+            direction = "RIGHT";
+            score = 0;
+            isPaused = false;
+            isGameOver = false;
+            food = {
+                x: Math.floor(Math.random() * (canvas.width / box)) * box,
+                y: Math.floor(Math.random() * (canvas.height / box)) * box
+            };
+            scoreDisplay.textContent = "Pontos: " + score;
+            gameOverMessage.style.display = "none";
+            clearInterval(gameInterval);
+            gameInterval = setInterval(drawGame, 100);
+        }
+
+        document.addEventListener("keydown", changeDirection);
+        function changeDirection(event) {
+            const key = event.key;
+            if ((key === "ArrowUp" || key === "w") && direction !== "DOWN") direction = "UP";
+            if ((key === "ArrowDown" || key === "s") && direction !== "UP") direction = "DOWN";
+            if ((key === "ArrowLeft" || key === "a") && direction !== "RIGHT") direction = "LEFT";
+            if ((key === "ArrowRight" || key === "d") && direction !== "LEFT") direction = "RIGHT";
+            if (key === " ") togglePause();
+            if (key === "r" && isGameOver) init();
+        }
+
+        function togglePause() {
+            if (isGameOver) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                clearInterval(gameInterval);
+            } else {
+                gameInterval = setInterval(drawGame, 100);
+            }
+        }
+
+        function drawGame() {
+            if (isPaused || isGameOver) return;
+            
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x, food.y, box, box);
+            
+            ctx.fillStyle = "lime";
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x, segment.y, box, box);
+            });
+            
+            let head = { x: snake[0].x, y: snake[0].y };
+            if (direction === "UP") head.y -= box;
+            if (direction === "DOWN") head.y += box;
+            if (direction === "LEFT") head.x -= box;
+            if (direction === "RIGHT") head.x += box;
+            
+            if (head.x === food.x && head.y === food.y) {
+                food = {
+                    x: Math.floor(Math.random() * (canvas.width / box)) * box,
+                    y: Math.floor(Math.random() * (canvas.height / box)) * box
+                };
+                score++;
+                scoreDisplay.textContent = "Pontos: " + score;
+                if (score >= 15) {
+                    gameOverMessage.style.display = "none"; // Parar de mostrar mensagens de morte
+                    showRandomMessage();
+                }
+            } else {
+                snake.pop();
+            }
+            
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height ||
+                snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                gameOver();
+            }
+            
+            snake.unshift(head);
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            gameOverMessage.style.display = "block";
+
+            // Mensagem de Game Over com base na pontuação
+            switch (score) {
+                case 1:
+                    gameOverMessage.textContent = "Sério, você está mesmo tentando?";
+                    break;
+                case 2:
+                    gameOverMessage.textContent = "Tudo dois";
+                    break;
+                case 3:
+                    gameOverMessage.textContent = "Não alimente muito a sua serpente";
+                    break;
+                case 4:
+                    gameOverMessage.textContent = "É sério, não alimente sua serpente";
+                    break;
+                case 5:
+                    gameOverMessage.textContent = "Melhor parar por aqui";
+                    break;
+                case 6:
+                    gameOverMessage.textContent = "Já jogou bastante, não acha?";
+                    break;
+                case 7:
+                    gameOverMessage.textContent = "Parabéns, você conseguiu bater o Record mundial... a não, pera";
+                    break;
+                case 8:
+                    gameOverMessage.textContent = "Caso continue, sua serpente irá ficar obesa";
+                    break;
+                case 9:
+                    gameOverMessage.textContent = "Você gosta de maçã, não é mesmo?";
+                    break;
+                case 10:
+                    gameOverMessage.textContent = "Sua serpente ficará consciente em breve";
+                    break;
+                case 11:
+                    gameOverMessage.textContent = "Cuidado, ela está evoluindo";
+                    break;
+                case 12:
+                    gameOverMessage.textContent = "Poderia um programa de computador ganhar consciência por conta de maçãs?";
+                    break;
+                case 13:
+                    gameOverMessage.textContent = "Era uma maçã podre";
+                    break;
+                case 14:
+                    gameOverMessage.textContent = "CUIDADO!";
+                    break;
+                default:
+                    if (score > 15) {
+                        gameOverMessage.textContent = "Ela ascendeu";
+                    }
+                    break;
+            }
+        }
+
+        function showRandomMessage() {
+            const randomIndex = Math.floor(Math.random() * messages.length);
+            gameOverMessage.textContent = messages[randomIndex];
+            gameOverMessage.style.display = "block";
+        }
+
+        window.addEventListener("resize", init);
+        init();
+    </script>
+</body>
+</html>
